@@ -19,7 +19,7 @@ let score = { w: 0, l: 0, d: 0 };
 let parts = [], fwI = null, maskP = 0;
 let mx = 0, my = 0; // 虛擬滑鼠座標
 
-const BUF = 14, HOLD = 2000, CD = 3;
+const BUF = 14, HOLD = 2000, CD = 3; // HOLD 2000ms 即為 2 秒
 
 const enter = s => { st = s; stAt = Date.now(); };
 
@@ -145,7 +145,8 @@ function update(now) {
   parts = parts.filter(p => p.life > 0);
 
   if (st === 'idle') {
-    if (stable === 'paper') {
+    // 待機狀態：偵測到「布 (🖐️)」開始計時
+    if (stable === 'paper') { 
       if (pG !== stable) { holdT = now; pG = stable; }
       if (holdT && now - holdT >= HOLD) enter('countdown');
     } else { holdT = null; pG = null; }
@@ -173,7 +174,8 @@ function update(now) {
   if (st === 'draw' && el > 2800) enter('menu');
 
   if (st === 'menu') {
-    if (stable === 'paper' || stable === 'rock') {
+    // 選單狀態：偵測到「布 (🖐️)」繼續遊戲，偵測到「石頭 (✊)」結束遊戲
+    if (stable === 'paper' || stable === 'rock') { 
       if (pG !== stable) { holdT = now; pG = stable; }
       if (holdT && now - holdT >= HOLD) {
         if (stable === 'paper') startGame();

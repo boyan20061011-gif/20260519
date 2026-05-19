@@ -1,7 +1,7 @@
 'use strict';
 
 // ─────────────────────────────────────────────────────────────
-//  CONFIG & CONSTANTS
+// 1. 配置與常數
 // ─────────────────────────────────────────────────────────────
 const W = 640, H = 480;
 const PICKS = ['rock', 'paper', 'scissors'];
@@ -9,31 +9,27 @@ const EM = { rock: '✊', paper: '🖐', scissors: '✌️' };
 const LB = { rock: '石頭', paper: '布', scissors: '剪刀' };
 const BEATS = { rock: 'scissors', scissors: 'paper', paper: 'rock' };
 const PAL = ['#FF6B6B', '#FFE66D', '#4ECDC4', '#C3A6FF', '#FF9F43', '#56CCF2', '#FD79A8', '#A3F7BF'];
-const SKEL = [[0, 1], [1, 2], [2, 3], [3, 4], [0, 5], [5, 6], [6, 7], [7, 8], [5, 9], [9, 10], [10, 11], [11, 12],
-[9, 13], [13, 14], [14, 15], [15, 16], [13, 17], [0, 17], [17, 18], [18, 19], [19, 20]];
+const SKEL = [[0, 1], [1, 2], [2, 3], [3, 4], [0, 5], [5, 6], [6, 7], [7, 8], [5, 9], [9, 10], [10, 11], [11, 12], [9, 13], [13, 14], [14, 15], [15, 16], [13, 17], [0, 17], [17, 18], [18, 19], [19, 20]];
 
-// ─────────────────────────────────────────────────────────────
-//  STATE VARIABLES
-// ─────────────────────────────────────────────────────────────
 let capture, hands, camera;
 let st = 'loading', stAt = Date.now();
 let pG = null, cG = null, lm = null, stable = null;
-let gBuf = [], holdT = null, wBuf = [], lastSw = 0;
+let gBuf = [], holdT = null, wBuf = [];
 let score = { w: 0, l: 0, d: 0 };
 let parts = [], fwI = null, maskP = 0;
-let mx = 0, my = 0;
+let mx = 0, my = 0; // 虛擬滑鼠座標
 
-const BUF = 14, HOLD = 2000, CD = 3, WN = 26;
+const BUF = 14, HOLD = 2000, CD = 3;
 
 const enter = s => { st = s; stAt = Date.now(); };
 
 // ─────────────────────────────────────────────────────────────
-//  P5.JS SETUP & DRAW
+// 2. p5.js 核心
 // ─────────────────────────────────────────────────────────────
 function setup() {
   createCanvas(windowWidth, windowHeight);
   
-  // 初始化攝影機
+  // 初始化擷取
   capture = createCapture(VIDEO);
   capture.size(W, H);
   capture.hide();
@@ -43,7 +39,7 @@ function setup() {
   hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.72, minTrackingConfidence: 0.5 });
   hands.onResults(onResults);
 
-  // 啟動 MediaPipe 循環
+  // 啟動相機循環
   camera = new Camera(capture.elt, {
     onFrame: async () => { await hands.send({ image: capture.elt }); },
     width: W, height: H
@@ -56,24 +52,24 @@ function draw() {
   const now = Date.now();
   update(now);
 
-  // 計算 50% 置中縮放
+  // 計算 50% 置中比例
   let displayW = width * 0.5;
   let displayH = height * 0.5;
   let scaleFactor = Math.min(displayW / W, displayH / H);
   
-  // 更新虛擬滑鼠座標（用於按鈕判定）
+  // 計算虛擬滑鼠座標以進行按鈕判定
   mx = (mouseX - width / 2) / scaleFactor + W / 2;
   my = (mouseY - height / 2) / scaleFactor + H / 2;
 
   push();
+  // 置中並縮放
   translate(width / 2, height / 2);
   scale(scaleFactor);
   translate(-W / 2, -H / 2);
 
-  // 使用原始 CanvasRenderingContext2D 以保留所有 0519.html 的繪圖邏輯
-  let g = drawingContext;
+  const g = drawingContext; // 取得原生 CanvasContext 以執行複雜繪圖
 
-  // 1. 繪製攝影機影像 (左右翻轉)
+  // 繪製背景影像 (鏡像)
   if (st !== 'loading' && st !== 'ended') {
     push();
     translate(W, 0);
@@ -82,8 +78,8 @@ function draw() {
     pop();
   }
 
-  // 2. 依照狀態繪製遊戲畫面
-  const renderers = {
+  // 狀態渲染器
+  const render = {
     loading: () => dLoading(g),
     idle: () => dIdle(g),
     countdown: () => dCountdown(g),
@@ -94,7 +90,7 @@ function draw() {
     menu: () => dMenu(g),
     ended: () => dEnded(g)
   };
-  (renderers[st] || renderers.loading)();
+  (render[st] || render.loading)();
 
   pop();
 }
@@ -106,12 +102,12 @@ function windowResized() {
 function mousePressed() {
   if (st !== 'menu') return;
   const bw = 132, bh = 52, by = H / 2 + 24;
-  if (mx >= W / 2 - bw - 8 && mx <= W / 2 - 8 && my >= by && my <= by + bh) startGame();
-  if (mx >= W / 2 + 8 && mx <= W / 2 + 140 && my >= by && my <= by + bh) enter('ended');
+  if (mx >= W/2-bw-8 && mx <= W/2-8 && my >= by && my <= by+bh) startGame();
+  if (mx >= W/2+8 && mx <= W/2+140 && my >= by && my <= by+bh) enter('ended');
 }
 
 // ─────────────────────────────────────────────────────────────
-//  LOGIC & MEDIA PIPE
+// 3. 邏輯處理 (辨識、更新、判定)
 // ─────────────────────────────────────────────────────────────
 function onResults(r) {
   if (r.multiHandLandmarks && r.multiHandLandmarks[0]) {
@@ -119,9 +115,8 @@ function onResults(r) {
     const gest = classify(lm);
     gBuf.push(gest); if (gBuf.length > BUF) gBuf.shift();
     stable = vote(gBuf);
-    wBuf.push({ x: 1 - lm[0].x, t: Date.now() }); if (wBuf.length > WN) wBuf.shift();
   } else {
-    lm = null; stable = null; gBuf = []; wBuf = [];
+    lm = null; stable = null; gBuf = [];
   }
 }
 
@@ -145,7 +140,9 @@ function vote(buf) {
 
 function update(now) {
   const el = now - stAt;
-  tickP();
+  // 粒子更新
+  parts.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += .18; p.vx *= .97; p.life -= p.dec; });
+  parts = parts.filter(p => p.life > 0);
 
   if (st === 'idle') {
     if (stable === 'paper') {
@@ -168,7 +165,7 @@ function update(now) {
     if (res === 'win') { score.w++; startFW(); }
     else if (res === 'lose') score.l++;
     else score.d++;
-    enter(res); maskP = 0;
+    enter(res);
   }
 
   if (st === 'win' && el > 4800) { stopFW(); enter('menu'); }
@@ -187,13 +184,12 @@ function update(now) {
 }
 
 function startGame() {
-  parts = []; maskP = 0; gBuf = []; stable = null;
-  holdT = null; pG = null; cG = null;
+  parts = []; gBuf = []; stable = null; holdT = null; pG = null; cG = null;
   stopFW(); enter('idle');
 }
 
 // ─────────────────────────────────────────────────────────────
-//  DRAWING UTILITIES (移植自 0519.html)
+// 4. 繪圖輔助工具 (移植自 HTML)
 // ─────────────────────────────────────────────────────────────
 function rr(g, x, y, w, h, r) {
   g.beginPath(); g.moveTo(x + r, y);
@@ -226,7 +222,7 @@ function scoreHUD(g) {
 
 function dLoading(g) {
   g.fillStyle = '#0d1117'; g.fillRect(0, 0, W, H);
-  boldT(g, '載入 AI 辨識中…', W / 2, H / 2 - 24, 26, '#FFF', null, '#4ECDC4');
+  boldT(g, '載入 AI 手勢辨識中…', W / 2, H / 2 - 24, 26, '#FFF', null, '#4ECDC4');
 }
 
 function dIdle(g) {
@@ -248,7 +244,6 @@ function dIdle(g) {
 }
 
 function dCountdown(g) {
-  scoreHUD(g);
   const el = Date.now() - stAt;
   const sc = Math.ceil((CD * 1000 - el) / 1000);
   const col = sc === 1 ? '#FF4444' : '#00FF88';
@@ -273,7 +268,11 @@ function card(g, gest, x, y, w, h, acc, a) {
 }
 
 function dWin(g) {
-  drawP(g); scoreHUD(g);
+  parts.forEach(p => {
+    g.save(); g.globalAlpha = p.life; g.fillStyle = p.col;
+    g.beginPath(); g.arc(p.x, p.y, p.sz * p.life, 0, Math.PI * 2); g.fill(); g.restore();
+  });
+  scoreHUD(g);
   boldT(g, '🎉 恭喜你贏了！🎉', W / 2, 44, 44, '#FFD700', '#FF6600', '#FFD700');
 }
 
@@ -314,17 +313,6 @@ function dEnded(g) {
   boldT(g, '感謝遊玩！', W / 2, H / 2, 48, '#FFF');
 }
 
-// 粒子系統
-function tickP() {
-  parts.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += .18; p.vx *= .97; p.life -= p.dec; });
-  parts = parts.filter(p => p.life > 0);
-}
-function drawP(g) {
-  parts.forEach(p => {
-    g.save(); g.globalAlpha = p.life; g.fillStyle = p.col;
-    g.beginPath(); g.arc(p.x, p.y, p.sz * p.life, 0, Math.PI * 2); g.fill(); g.restore();
-  });
-}
 function startFW() {
   fwI = setInterval(() => {
     const col = PAL[Math.random() * PAL.length | 0];
@@ -334,4 +322,5 @@ function startFW() {
     }
   }, 500);
 }
+
 function stopFW() { if (fwI) clearInterval(fwI); fwI = null; }

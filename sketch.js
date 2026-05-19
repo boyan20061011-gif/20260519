@@ -14,32 +14,29 @@ const SKEL = [[0, 1], [1, 2], [2, 3], [3, 4], [0, 5], [5, 6], [6, 7], [7, 8], [5
 let capture, hands, camera;
 let st = 'loading', stAt = Date.now();
 let pG = null, cG = null, lm = null, stable = null;
-let gBuf = [], holdT = null, wBuf = [];
+let gBuf = [], holdT = null;
 let score = { w: 0, l: 0, d: 0 };
 let parts = [], fwI = null, maskP = 0;
-let mx = 0, my = 0; // 虛擬滑鼠座標
+let mx = 0, my = 0;
 
-const BUF = 14, HOLD = 2000, CD = 3; // HOLD 2000ms 即為 2 秒
-
+const BUF = 14, HOLD = 2000, CD = 3;
 const enter = s => { st = s; stAt = Date.now(); };
 
 // ─────────────────────────────────────────────────────────────
-// 2. p5.js 核心
+// 2. p5.js 核心週期
 // ─────────────────────────────────────────────────────────────
 function setup() {
   createCanvas(windowWidth, windowHeight);
   
-  // 初始化擷取
   capture = createCapture(VIDEO);
   capture.size(W, H);
   capture.hide();
 
-  // 初始化 MediaPipe Hands
+  // 初始化 MediaPipe
   hands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
   hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.72, minTrackingConfidence: 0.5 });
   hands.onResults(onResults);
 
-  // 啟動相機循環
   camera = new Camera(capture.elt, {
     onFrame: async () => { await hands.send({ image: capture.elt }); },
     width: W, height: H
@@ -52,24 +49,23 @@ function draw() {
   const now = Date.now();
   update(now);
 
-  // 計算 50% 置中比例
+  // 計算縮放：50% 置中
   let displayW = width * 0.5;
   let displayH = height * 0.5;
-  let scaleFactor = Math.min(displayW / W, displayH / H);
+  let s = Math.min(displayW / W, displayH / H);
   
-  // 計算虛擬滑鼠座標以進行按鈕判定
-  mx = (mouseX - width / 2) / scaleFactor + W / 2;
-  my = (mouseY - height / 2) / scaleFactor + H / 2;
+  // 轉換滑鼠座標用於選單按鈕判定
+  mx = (mouseX - width / 2) / s + W / 2;
+  my = (mouseY - height / 2) / s + H / 2;
 
   push();
-  // 置中並縮放
   translate(width / 2, height / 2);
-  scale(scaleFactor);
+  scale(s);
   translate(-W / 2, -H / 2);
 
-  const g = drawingContext; // 取得原生 CanvasContext 以執行複雜繪圖
+  const g = drawingContext; // 取得原生 Context2D 執行 HTML5 繪圖邏輯
 
-  // 繪製背景影像 (鏡像)
+  // 繪製影像鏡像
   if (st !== 'loading' && st !== 'ended') {
     push();
     translate(W, 0);
@@ -78,8 +74,7 @@ function draw() {
     pop();
   }
 
-  // 狀態渲染器
-  const render = {
+  const renderers = {
     loading: () => dLoading(g),
     idle: () => dIdle(g),
     countdown: () => dCountdown(g),
@@ -90,7 +85,7 @@ function draw() {
     menu: () => dMenu(g),
     ended: () => dEnded(g)
   };
-  (render[st] || render.loading)();
+  (renderers[st] || renderers.loading)();
 
   pop();
 }
@@ -102,12 +97,12 @@ function windowResized() {
 function mousePressed() {
   if (st !== 'menu') return;
   const bw = 132, bh = 52, by = H / 2 + 24;
-  if (mx >= W/2-bw-8 && mx <= W/2-8 && my >= by && my <= by+bh) startGame();
-  if (mx >= W/2+8 && mx <= W/2+140 && my >= by && my <= by+bh) enter('ended');
+  if (mx >= W / 2 - bw - 8 && mx <= W / 2 - 8 && my >= by && my <= by + bh) startGame();
+  if (mx >= W / 2 + 8 && mx <= W / 2 + 140 && my >= by && my <= by + bh) enter('ended');
 }
 
 // ─────────────────────────────────────────────────────────────
-// 3. 邏輯處理 (辨識、更新、判定)
+// 3. 邏輯判定
 // ─────────────────────────────────────────────────────────────
 function onResults(r) {
   if (r.multiHandLandmarks && r.multiHandLandmarks[0]) {
@@ -145,7 +140,6 @@ function update(now) {
   parts = parts.filter(p => p.life > 0);
 
   if (st === 'idle') {
-    // 待機狀態：偵測到「張開手掌 (🖐️)」靜止不動 2 秒開始遊戲
     if (stable === 'paper') {
       if (holdT === null) { holdT = now; pG = 'paper'; }
       if (holdT && now - holdT >= HOLD) enter('countdown');
@@ -174,7 +168,6 @@ function update(now) {
   if (st === 'draw' && el > 2800) enter('menu');
 
   if (st === 'menu') {
-    // 選單狀態：張開手掌 (🖐️) 靜止 2 秒繼續，握拳 (✊) 靜止 2 秒結束
     if (stable === 'paper' || stable === 'rock') {
       if (pG !== stable) { holdT = now; pG = stable; }
       if (holdT && now - holdT >= HOLD) {
@@ -191,7 +184,7 @@ function startGame() {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 4. 繪圖輔助工具 (移植自 HTML)
+// 4. 繪圖實作 (繪圖細節遷移自 HTML)
 // ─────────────────────────────────────────────────────────────
 function rr(g, x, y, w, h, r) {
   g.beginPath(); g.moveTo(x + r, y);

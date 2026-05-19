@@ -293,8 +293,8 @@ function dMenu(g) {
   g.fillStyle = 'rgba(0,0,0,.78)'; g.fillRect(0, 0, W, H);
   boldT(g, '再玩一局？', W / 2, H / 2 - 78, 34, '#FFF');
   const bw = 132, bh = 52, by = H / 2 + 24;
-  btn(g, '👈 繼續', W / 2 - bw - 8, by, bw, bh, '#00AA44');
-  btn(g, '結束 👉', W / 2 + 8, by, bw, bh, '#CC2200');
+  btn(g, '🖐️ 繼續', W / 2 - bw - 8, by, bw, bh, '#00AA44');
+  btn(g, '結束 ✊', W / 2 + 8, by, bw, bh, '#CC2200');
 
   if (stable === 'paper' || stable === 'rock') {
     const pct = holdT ? Math.min(1, (Date.now() - holdT) / HOLD) : 0;

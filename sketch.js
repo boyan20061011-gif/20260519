@@ -145,9 +145,9 @@ function update(now) {
   parts = parts.filter(p => p.life > 0);
 
   if (st === 'idle') {
-    // 待機狀態：偵測到「布 (🖐️)」開始計時
-    if (stable === 'paper') { 
-      if (pG !== stable) { holdT = now; pG = stable; }
+    // 待機狀態：偵測到「張開手掌 (🖐️)」靜止不動 2 秒開始遊戲
+    if (stable === 'paper') {
+      if (holdT === null) { holdT = now; pG = 'paper'; }
       if (holdT && now - holdT >= HOLD) enter('countdown');
     } else { holdT = null; pG = null; }
   }
@@ -174,8 +174,8 @@ function update(now) {
   if (st === 'draw' && el > 2800) enter('menu');
 
   if (st === 'menu') {
-    // 選單狀態：偵測到「布 (🖐️)」繼續遊戲，偵測到「石頭 (✊)」結束遊戲
-    if (stable === 'paper' || stable === 'rock') { 
+    // 選單狀態：張開手掌 (🖐️) 靜止 2 秒繼續，握拳 (✊) 靜止 2 秒結束
+    if (stable === 'paper' || stable === 'rock') {
       if (pG !== stable) { holdT = now; pG = stable; }
       if (holdT && now - holdT >= HOLD) {
         if (stable === 'paper') startGame();
@@ -236,7 +236,7 @@ function dIdle(g) {
 
   if (!lm) {
     boldT(g, '請將手伸入畫面', W / 2, H - 90, 22, '#FFF');
-    smT(g, '比出 🖐️ 張開手掌 (布) 靜止 2 秒以開始遊戲', W / 2, H - 56, 15);
+    smT(g, '🖐️ 張開手掌 (布) 靜止不動 2 秒以開始', W / 2, H - 56, 15);
   } else if (stable) {
     boldT(g, `偵測到：${EM[stable]} ${LB[stable]}`, W / 2, H - 102, 20, '#00FF88', null, '#00FF88');
     const pct = holdT ? Math.min(1, (Date.now() - holdT) / HOLD) : 0;
@@ -295,6 +295,7 @@ function dMenu(g) {
   const bw = 132, bh = 52, by = H / 2 + 24;
   btn(g, '🖐️ 繼續', W / 2 - bw - 8, by, bw, bh, '#00AA44');
   btn(g, '結束 ✊', W / 2 + 8, by, bw, bh, '#CC2200');
+  smT(g, '🖐️ 繼續遊戲  ·  ✊ 結束離開 (請靜止 2 秒)', W / 2, H / 2 + 106, 14, 'rgba(255,255,255,0.5)');
 
   if (stable === 'paper' || stable === 'rock') {
     const pct = holdT ? Math.min(1, (Date.now() - holdT) / HOLD) : 0;

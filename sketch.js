@@ -223,6 +223,7 @@ function scoreHUD(g) {
 function dLoading(g) {
   g.fillStyle = '#0d1117'; g.fillRect(0, 0, W, H);
   boldT(g, '載入 AI 手勢辨識中…', W / 2, H / 2 - 24, 26, '#FFF', null, '#4ECDC4');
+  smT(g, '🖐️ 張開手掌 2 秒以開始遊戲', W / 2, H / 2 + 30, 16, 'rgba(255,255,255,0.5)');
 }
 
 function dIdle(g) {
@@ -233,7 +234,7 @@ function dIdle(g) {
 
   if (!lm) {
     boldT(g, '請將手伸入畫面', W / 2, H - 90, 22, '#FFF');
-    smT(g, '比出  🖐️ 張開手掌 (布) 以開始遊戲', W / 2, H - 56, 15);
+    smT(g, '比出 🖐️ 張開手掌 (布) 靜止 2 秒以開始遊戲', W / 2, H - 56, 15);
   } else if (stable) {
     boldT(g, `偵測到：${EM[stable]} ${LB[stable]}`, W / 2, H - 102, 20, '#00FF88', null, '#00FF88');
     const pct = holdT ? Math.min(1, (Date.now() - holdT) / HOLD) : 0;

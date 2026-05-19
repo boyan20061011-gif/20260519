@@ -53,6 +53,16 @@ const enter=s=>{st=s;stAt=Date.now();};
 
 let pG=null,cG=null;         // player / cpu gesture
 let lm=null,stable=null;     // mediapipe landmarks, debounced gesture
+
+  if(st === 'menu'){
+    if(stable === 'paper' || stable === 'rock'){
+      if(pG !== stable){ holdT = now; pG = stable; }
+      if(holdT && now - holdT >= HOLD){
+        if(stable === 'paper') startGame();
+        else enter('ended');
+      }
+    } else { holdT = null; pG = null; }
+  }
 let gBuf=[],holdT=null;      // gesture buffer, hold-start time
 const BUF=14,HOLD=2000,CD=3; // buffer size, hold ms, countdown secs
 
@@ -320,7 +330,7 @@ function dIdle(){
 
   if(!lm){
     boldT('請將手伸入畫面',W/2,H-90,22,'#FFF');
-    smT('比出  ✊ 握拳 (石頭) 以開始遊戲',W/2,H-56,15);
+    smT('比出  🖐️ 張開手掌 (布) 以開始遊戲',W/2,H-56,15);
   } else if(stable){
     boldT(`偵測到：${EM[stable]} ${LB[stable]}`,W/2,H-102,20,'#00FF88',null,'#00FF88');
     const pct=holdT ? Math.min(1,(Date.now()-holdT)/HOLD) : 0;
@@ -328,10 +338,10 @@ function dIdle(){
     g.fillStyle='rgba(255,255,255,.18)';rr(W/2-104,H-70,208,13,6);g.fill();
     g.fillStyle=pct<.5?'#FFD93D':pct<.9?'#4ECDC4':'#00FF88';
     rr(W/2-104,H-70,208*pct,13,6);g.fill();
-    smT(pct<1?'握拳讀取中…':'準備出拳！',W/2,H-44,13,'rgba(255,255,255,.7)');
+    smT(pct<1?'手勢讀取中…':'準備出拳！',W/2,H-44,13,'rgba(255,255,255,.7)');
   } else {
-    boldT('請比出石頭 / 布 / 剪刀',W/2,H-82,18,'#FFD93D');
-    smT('確保手部清晰，握拳保持 2 秒',W/2,H-52,14,'rgba(255,255,255,.4)');
+    boldT('請比出 布 / 石頭 / 剪刀',W/2,H-82,18,'#FFD93D');
+    smT('確保手部清晰，張開手掌保持 2 秒開始',W/2,H-52,14,'rgba(255,255,255,.4)');
   }
 }
 
@@ -421,7 +431,7 @@ function dMenu(){
   g.fillStyle='rgba(255,255,255,.5)';
   g.fillText(`✅ ${score.w}勝  ❌ ${score.l}敗  🤝 ${score.d}平`,W/2,H/2-33);g.restore();
 
-  smT('點擊按鈕，或揮手：← 左 結束  /  繼續 右 →',W/2,H/2+2,14);
+  smT('點擊按鈕，或手勢：🖐️ 繼續  /  ✊ 結束',W/2,H/2+2,14);
 
   const bw=132,bh=52,by=H/2+24;
   btn('👈 繼續',W/2-bw-8,by,bw,bh,'#00AA44');
@@ -432,7 +442,14 @@ function dMenu(){
   g.fillStyle='rgba(255,255,255,.06)';rr(20,H/2+90,W-40,32,8);g.fill();
   g.font='13px Arial';g.textAlign='center';g.textBaseline='middle';
   g.fillStyle='rgba(255,255,255,.45)';
-  g.fillText('💡 向右揮手 繼續遊戲  ·  向左揮手 結束遊戲',W/2,H/2+106);g.restore();
+  g.fillText('💡 張開手掌 (布) 繼續遊戲  ·  握拳 (石頭) 結束遊戲',W/2,H/2+106);g.restore();
+
+  if(stable && (stable === 'paper' || stable === 'rock')){
+    const pct = holdT ? Math.min(1, (Date.now()-holdT)/HOLD) : 0;
+    g.fillStyle='rgba(255,255,255,.18)'; rr(W/2-104, H/2+128, 208, 10, 5); g.fill();
+    g.fillStyle=stable === 'paper' ? '#00FF88' : '#FF4444';
+    rr(W/2-104, H/2+128, 208*pct, 10, 5); g.fill();
+  }
 
   // swipe detection
   const sw=checkSwipe();
@@ -463,7 +480,7 @@ function update(){
 
   // ── IDLE ──
   if(st==='idle'){
-    if(stable === 'rock'){
+    if(stable === 'paper'){
       // if gesture changed, reset hold timer
       if(pG!==stable){ holdT=now; pG=stable; }
       else if(!holdT) holdT=now;
